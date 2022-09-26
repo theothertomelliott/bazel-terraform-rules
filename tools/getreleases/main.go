@@ -130,10 +130,10 @@ VERSIONS = {
 {{- range . }}
   "{{.Version}}": {
     {{- range .Builds }}
-	"{{.OS}}_{{.Arch}}": {
-	  "url": "{{.URL}}",
-	  "sha": "{{.SHA}}",
-	},
+    "{{.OS}}_{{.Arch}}": {
+      "url": "{{.URL}}",
+      "sha": "{{.SHA}}",
+    },
     {{- end }}
   },
 {{- end }}
