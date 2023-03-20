@@ -51,11 +51,25 @@ for example, to share a file between modules without making copies or symlinks.
 
 ## Running Terraform
 
-Each module defined with `terraform_module` will have a `:terraform` target that you can use to run arbitrary Terraform commands:
+Each module defined with `terraform_module` will have an executable Terraform target that you can use to run arbitrary Terraform commands.
+
+This target will be `terraform`, prefixed with the name of your `terraform_module` and an underscore, so a
+module called `foo` in the `mymodule` package will have a target `:foo_terraform`.
+
+You can pass any commands and parameters to this target that you would to Terraform.
 
 ```
+bazel run //path/to/mymodule:foo_terraform -- plan
+bazel run //path/to/mymodule:foo_terraform -- apply
+```
+
+If your `terraform_module` also has the same name as your package directory, an alias to the Terraform target
+will be created with the name `:terraform` for convenience. So the following commands would execute the same
+operation:
+
+```
+bazel run //path/to/mymodule:mymodule_terraform -- plan
 bazel run //path/to/mymodule:terraform -- plan
-bazel run //path/to/mymodule:terraform -- apply
 ```
 
 ## Module Dependencies

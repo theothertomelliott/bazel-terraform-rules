@@ -17,6 +17,21 @@ jobs:
   release-version:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: src
+      - name: Tar source
+        run: |
+          pushd src
+          tar --exclude-ignore=.tarignore -czvf ../bazel-terraform-rules.tar.gz .
+          popd
+          echo "::set-output name=SRC_SHA256::$(sha256sum bazel-terraform-rules.tar.gz | cut -d " " -f 1)"
+          echo "::set-output name=TAR_PATH::$(realpath bazel-terraform-rules.tar.gz)"
+        id: tar
+      - name: Test tar
+        run: |
+          src/.github/workflows/release/scripts/local-release-test.sh "${{steps.tar.outputs.TAR_PATH}}" "${{steps.tar.outputs.SRC_SHA256}}"
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.0
@@ -24,6 +39,9 @@ jobs:
           default_bump: "${{inputs.bumpType}}"
           tag_prefix: ""
           github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rename tar with tag
+        run: |
+          mv ${{steps.tar.outputs.TAR_PATH}} bazel-terraform-rules-${{steps.tag_version.outputs.new_tag}}.tar.gz
       - name: "Build Changelog"
         id: build_changelog
         uses: mikepenz/release-changelog-builder-action@v3
@@ -42,11 +60,19 @@ jobs:
             }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: |
-            echo "${{steps.build_changelog.outputs.changelog}}"
-      - name: GH Release
+      - name: Installation instructions
+        id: installation
+        run: |
+          src/.github/workflows/release/scripts/installation-code.sh "https://github.com/theothertomelliott/bazel-terraform-rules/releases/download/${{steps.tag_version.outputs.new_tag}}/bazel-terraform-rules-${{steps.tag_version.outputs.new_tag}}.tar.gz" ${{steps.tar.outputs.SRC_SHA256}} > instructions.txt
+      - name: "Read Load instructions into variable"
+        id: instructions
+        uses: andstor/file-reader-action@v1
+        with:
+          path: "instructions.txt"
+      - name: Create Release
         uses: softprops/action-gh-release@v0.1.14
         with:
+          files: bazel-terraform-rules-${{steps.tag_version.outputs.new_tag}}.tar.gz 
           tag_name: "${{steps.tag_version.outputs.new_tag}}"
           body: |
             # Adding to your Workspace
@@ -54,33 +80,12 @@ jobs:
             To use this version, add the following lines to your `WORKSPACE` file:
 
             ```
-            # Skylib dependency required for Terraform rules
-            http_archive(
-                name = "bazel_skylib",
-                urls = [
-                    "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
-                    "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
-                ],
-                sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
-            )
-            load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
-            bazel_skylib_workspace()
-
-            # Add Terraform rules as repository
-            TF_MODULES_VERSION="${{steps.tag_version.outputs.new_tag}}"
-            http_archive(
-                name = "tf_modules",
-                urls = ["https://github.com/theothertomelliott/bazel-terraform-rules/archive/refs/tags/{}.tar.gz".format(TF_MODULES_VERSION)],
-                # Uncomment once this is written correctly
-                #sha256 = "d8ffda4de088613914b7da6e1f9ff79053440dae56fc8add58e93a9692df36f6",
-                strip_prefix = "bazel-terraform-rules-{}".format(TF_MODULES_VERSION),
-            )
-            load("@tf_modules//toolchains/terraform:toolchain.bzl", "register_terraform_toolchain")
-
-            # Register required Terraform versions
-            register_terraform_toolchain("1.2.3", default=True)
+            ${{steps.instructions.outputs.contents}}
             ```
 
             # Changelog
 
             ${{steps.build_changelog.outputs.changelog}}
+      - name: Verify instructions
+        run: |
+          src/.github/workflows/release/scripts/test-instructions.sh "$(cat instructions.txt)"

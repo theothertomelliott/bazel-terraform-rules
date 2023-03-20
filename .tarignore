@@ -1,0 +1,13 @@
+.terraform
+*.tfstate
+*.tfstate.backup
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-tf-modules
+.idea
+*.pem
+
+bazel-bazel-terraform-rules
+.github
+*.tar.gz
