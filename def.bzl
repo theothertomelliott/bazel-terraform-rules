@@ -14,6 +14,7 @@ def terraform_module(
         provider_versions={},
         terraform_executable = Label("@terraform_default//:terraform_executable"),
         absolute_module_source_paths = True,
+        visibility = ["//visibility:public"],
         **kwargs):
     """Defines a new Terraform module.
 
@@ -40,11 +41,6 @@ def terraform_module(
     if name == "terraform":
         fail("The name 'terraform' is reserved for the Terraform executable. Please use a different name for your module.")
 
-    # The previous version of this macro set visibility to public by default
-    # Public visibility will be set if visibility is not overridden in kwargs.
-    if not "visibility" in kwargs:
-        kwargs["visibility"] = ["//visibility:public"]
-
     _terraform_module(
         name = name,
         module_path = module_path,
@@ -52,6 +48,7 @@ def terraform_module(
         srcs_flatten = srcs_flatten,
         module_deps = module_deps,
         absolute_module_source_paths = absolute_module_source_paths,
+        visibility = visibility,
         **kwargs
     )
 
@@ -89,6 +86,7 @@ def terraform_module(
         providers = providers,
         allow_provider_download = True,
         init_on_build = False,
+        visibility = visibility,
     )
 
     # If your module name shares the name of the package directory, create
